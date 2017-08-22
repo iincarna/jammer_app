@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="track blockers using Blocker Clock 1.0. Compatible with Chrome and Firefox." />
+	<meta name="keywords" content="Roller Derby, Jam, Jammer, Skates, Stats, Blocker">
+	<meta name="author" content="Mark Rivett">
+	<title>Blocker Clock</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+    <script type="text/javascript" src="navigation.js"></script>
+    <script type="text/javascript" src="fileLoader.js"></script>
+</head>
+<script>
+var playerNum=[];
+var playerName=[];
+function loadData(dta){
+	var postParse=parseXml(dta);
+	if(postParse.childNodes[0].childNodes[0].tagName=="player"){
+		var x=postParse.getElementsByTagName("data")[0].getElementsByTagName("player");
+		for (plyrs=0;plyrs<x.length;plyrs++){
+			playerNum[plyrs]=x[plyrs].getElementsByTagName("number")[0].childNodes[0].nodeValue;
+			playerName[plyrs]=x[plyrs].getElementsByTagName("name")[0].childNodes[0].nodeValue;
+			addPlayer(playerNum[plyrs],playerName[plyrs]);
+		};
+		document.getElementById("trackJam").style.display="block";
+	} else {
+		alert("The file you are loading is invalid. Please make sure you are loading a roster XML file and try again.");
+	}
+}
+window.onbeforeunload = function (event) {
+  var message = 'Are you sure you want to leave? If you close the browser without saving, your data will be lost.';
+  if (typeof event == 'undefined') {
+    event = window.event;
+  }
+  if (event) {
+    event.returnValue = message;
+  }
+  return message;
+}
+var players=0;
+function addPlayer(num,nm){
+	//creates a new line for a player
+	var node = document.createElement("div");
+	node.setAttribute("id", "rost"+players);
+	node.setAttribute("class", "playerLine");
+	var textnode1 = document.createTextNode("Player Number: ");
+	var inputNode1 = document.createElement("input");
+	inputNode1.setAttribute("id", "playerNum"+players);
+	inputNode1.setAttribute("type", "text");
+	inputNode1.setAttribute("size", "6");
+	inputNode1.setAttribute("value", num);
+	inputNode1.setAttribute("onkeyup", "checkInput(this,true,false);");
+	inputNode1.setAttribute("disabled", "true");
+	var textnode2 = document.createTextNode("Player Name: ");
+	var inputNode2 = document.createElement("input");
+	inputNode2.setAttribute("id", "playerName"+players);
+	inputNode2.setAttribute("type", "text");
+	inputNode2.setAttribute("size", "65");
+	inputNode2.setAttribute("value", nm);
+	inputNode2.setAttribute("onkeyup", "checkInput(this,false,true);");
+	inputNode2.setAttribute("disabled", "true");
+	node.appendChild(textnode1);
+	node.appendChild(inputNode1);
+	node.appendChild(textnode2);
+	node.appendChild(inputNode2);
+	document.getElementById("roster").appendChild(node);  
+	players++
+	//creates a new line for a player END
+};
+//creates Data layer for Bout XML file
+function dlBoutLink(){
+	var lnk = document.getElementById('saveBoutData');
+	lnk.download = document.getElementById("boutName").value+document.getElementById("boutDate").value+".xml"
+	var boutXMLInfo="<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><Data>";
+	boutXMLInfo+="<Bout>"+document.getElementById("boutName").value+"</Bout>";
+	boutXMLInfo+="<Date>"+document.getElementById("boutDate").value+"</Date>";
+	boutXMLInfo+="<OurScore>"+document.getElementById("ourScoreFinal").value+"</OurScore>";
+	boutXMLInfo+="<OpposingScore>"+document.getElementById("theirScoreFinal").value+"</OpposingScore>";
+	boutXMLInfo+="<OurStartingScore>"+document.getElementById("ourScore0").value+"</OurStartingScore>";
+	boutXMLInfo+="<OpposingStartingScore>"+document.getElementById("theirScore0").value+"</OpposingStartingScore>";
+	var finalJamNum=document.getElementById("bout").getElementsByTagName("table").length-1;
+	for(jn=0;jn<finalJamNum;jn++){
+		if(jn==(finalJamNum-1)){
+			var ourPoints=document.getElementById("ourScoreFinal").value-document.getElementById("ourScore"+jn).value;
+			var theirPoints=document.getElementById("theirScoreFinal").value-document.getElementById("theirScore"+jn).value;
+		} else {
+			var ourPoints=document.getElementById("ourScore"+(jn+1)).value-document.getElementById("ourScore"+jn).value;
+			var theirPoints=document.getElementById("theirScore"+(jn+1)).value-document.getElementById("theirScore"+jn).value;
+		};
+		//Our info
+		boutXMLInfo+="<Jam value=\""+jn+"\">"
+		for(blkrs=0;blkrs<4;blkrs++){
+			boutXMLInfo+="<Blocker ";
+			boutXMLInfo+="penalties=\""+penaltyCalc(blkrs,jn)+"\" ";
+			boutXMLInfo+=">"+document.getElementById("blckr_b"+blkrs+"_jn"+jn).value+"</Blocker>";
+		}
+		//Our Info End
+		if(document.getElementById("ourJTime"+jn).value==""){
+			boutXMLInfo+="<JammerEscape>"+document.getElementById("jamTime"+jn).value+"</JammerEscape>";
+		} else {
+			boutXMLInfo+="<JammerEscape>"+document.getElementById("ourJTime"+jn).value+"</JammerEscape>";
+		};
+		if(document.getElementById("theirJTime"+jn).value==""){
+			boutXMLInfo+="<OpponentEscape>"+document.getElementById("jamTime"+jn).value+"</OpponentEscape>";
+		} else {
+			boutXMLInfo+="<OpponentEscape>"+document.getElementById("theirJTime"+jn).value+"</OpponentEscape>"
+		};
+		boutXMLInfo+="<OurPoints>"+ourPoints+"</OurPoints>";
+		boutXMLInfo+="<TheirPoints>"+theirPoints+"</TheirPoints>";
+		boutXMLInfo+="<JamTime>"+document.getElementById("jamTime"+jn).value+"</JamTime>";
+		boutXMLInfo+="</Jam>";
+	}
+	boutXMLInfo+="</Data>";
+    lnk.href = makeTextFile(boutXMLInfo);
+};
+function penaltyCalc(bl,jn){
+	var pen=0;
+	if(document.getElementById("pen_0_b"+bl+"_jn"+jn).checked){
+		pen++;
+	}
+	if(document.getElementById("pen_1_b"+bl+"_jn"+jn).checked){
+		pen++;
+	}
+	if(document.getElementById("pen_2_b"+bl+"_jn"+jn).checked){
+		pen++;
+	}
+	if(document.getElementById("pen_3_b"+bl+"_jn"+jn).checked){
+		pen++;
+	}
+	return pen
+}
+
+function boutOver(){
+	var dataGood=false;
+	for(jams=0;jams<document.getElementById("bout").getElementsByTagName("table").length-1;jams++){
+		//score validation
+		if(document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[0].value==""){
+			document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[0].style.background="#F00";
+		} else{
+			document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[0].style.background="#CCC";
+			document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[0].disabled=true;
+		};
+		if(document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[1].value==""){
+			document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[1].style.background="#F00";
+		} else{
+			document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[1].style.background="#CCC";
+			document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[1].disabled=true;
+		};
+		//score validation END
+		//Blocker validation
+		for(blkrs=0;blkrs<4;blkrs++){
+			if(document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("select")[blkrs].value==""){
+				document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("select")[blkrs].style.background="#F00";
+			} else{
+				document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("select")[blkrs].style.background="#CCC";
+				document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("select")[blkrs].disabled=true;
+			};
+		}
+		//Blocker validation End
+		//final score valdidation
+		if(document.getElementById("ourScoreFinal").value==""){
+			document.getElementById("ourScoreFinal").style.background="#F00";
+		} else{
+			document.getElementById("ourScoreFinal").style.background="#CCC";
+		};
+		if(document.getElementById("theirScoreFinal").value==""){
+			document.getElementById("theirScoreFinal").style.background="#F00";
+		} else{
+			document.getElementById("theirScoreFinal").style.background="#CCC";
+		};
+		//final score valdidation end
+	};
+	for(jams=0;jams<document.getElementById("bout").getElementsByTagName("table").length-1;jams++){
+		if(document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[0].value=="" || document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("input")[1].value=="" || document.getElementById("ourScoreFinal").value=="" || document.getElementById("theirScoreFinal").value=="" || document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("select")[0].value=="" || document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("select")[1].value=="" || document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("select")[2].value=="" || document.getElementById("bout").getElementsByTagName("table")[jams].getElementsByTagName("select")[3].value==""){
+			alert("you are missing data for at least one jam, the final score, or a blocker");
+			dataGood=false;
+			break;
+		} else if(document.getElementById("boutName").value==""){
+			alert("please name your bout");
+			dataGood=false;
+			break;
+		} else {
+			var lastTable=document.getElementById("bout").getElementsByTagName("table").length;
+			document.getElementById("bout").getElementsByTagName("table")[lastTable-1].innerHTML="";
+			dataGood=true;
+		};
+	};
+	if(dataGood){
+		for(slct=0;slct<document.getElementById("bout").getElementsByTagName("select").length;slct++){
+			document.getElementById("bout").getElementsByTagName("select")[slct].disabled=true;
+		};
+		for(inpt=0;inpt<document.getElementById("bout").getElementsByTagName("input").length-2;inpt++){
+			document.getElementById("bout").getElementsByTagName("input")[inpt].disabled=true;
+		};
+		document.getElementById("saveBoutData").style.display="block";
+		dlBoutLink();
+	}
+};
+//creates Data layer for Bout XML file END
+//creates XML file
+var xmlFile = null
+function makeTextFile(text){
+    var data = new Blob([text], {type: 'text/xml'});
+    xmlFile = window.URL.createObjectURL(data);
+    return xmlFile;
+};
+//creates XML file END
+function checkInput(ob,nm,lt) {
+	if(nm && lt){
+		var invalidChars = /[^A-Za-z0-9_ ]/gi
+	} else if(nm && !lt){
+		var invalidChars = /[^0-9]/gi
+	} else if(lt && !nm){
+		var invalidChars = /[^a-zA-Z_ ]/gi
+	}
+	ob.value=ob.value.replace(" ","_");
+  	if(invalidChars.test(ob.value)) {
+		ob.value=ob.value.replace(invalidChars,"");
+	}
+}
+function trackBout(){
+	document.getElementById("setup").style.display="none";
+	document.getElementById("roster").style.display="none";
+	document.getElementById("trackJam").style.display="none";
+	document.getElementById("bout").style.display="block";
+	var dateTime=new Date();
+	document.getElementById("boutDate").value=dateTime.toLocaleString().replace("/","-").replace("/","-").replace(/:/g,"_").replace(",","")
+	buildJam();
+};
+function timeMaster(object,num){
+	Time=false;
+	if(document.getElementById(object).value=="Start Jam"){
+		document.getElementById(object).value="Stop/Reset"
+		document.getElementById("endJam"+num).disabled=false;
+	} else {
+		document.getElementById(object).value="Start Jam"
+		document.getElementById("endJam"+num).disabled=true;
+		Time=true;
+	};
+	
+	var tme=new Date();
+	var myTimer=setInterval(function(){
+		if(document.getElementById(object).value=="Stop/Reset"){
+			document.getElementById("jamTime"+num).value=timeFormatter(tme.getTime());
+			if(timeFormatter(tme.getTime())>=120 || Time){
+				clearInterval(myTimer);
+				stopTime(num);
+				buildJam();
+				window.scrollBy(0,280);
+			}
+		} else {
+			clearInterval(myTimer);
+			document.getElementById("jamTime"+num).value="";
+		}
+		
+	}, 10);
+};
+var Time=false;
+function stopTime(num){
+	Time=true;
+	document.getElementById("endJam"+num).disabled=true;
+	document.getElementById("startJam"+num).disabled=true;
+	document.getElementById("ourJ"+num).disabled=true;
+	document.getElementById("theirJ"+num).disabled=true;
+}
+function timeOut(inpt,num){
+	if(document.getElementById(inpt+num).value==""){
+		document.getElementById(inpt+num).value=document.getElementById("jamTime"+num).value;
+	} else {
+		document.getElementById(inpt+num).value=""
+	}
+}
+function timeFormatter(val){
+	var tpassed=new Date();
+	var tm=(Math.round((tpassed.getTime()-val)/10))/100;
+	return tm
+}
+var jamNumber=0
+function buildJam(){
+	var blockerMaster="";
+	var penaltyMaster=""
+	for(blckr=0;blckr<4;blckr++){
+		blockerMaster+="<td style='border-right:1px solid#ccc;'><select id='blckr_b"+blckr+"_jn"+jamNumber+"' onchange=\"uniqueBlocker(this.id,"+blckr+","+jamNumber+")\"><option value='' selected='selected'>Select Blocker</option>";
+		penaltyMaster+="<td style='border-right:1px solid#ccc;'>Penalties: 1<input id='pen_0_b"+blckr+"_jn"+jamNumber+"' type='checkbox' /> "
+		penaltyMaster+="2<input id='pen_1_b"+blckr+"_jn"+jamNumber+"' type='checkbox' /> "
+		penaltyMaster+="3<input id='pen_2_b"+blckr+"_jn"+jamNumber+"' type='checkbox' /> "
+		penaltyMaster+="4<input id='pen_3_b"+blckr+"_jn"+jamNumber+"' type='checkbox' /></td>"
+		for(slct=0;slct<playerName.length;slct++){
+			blockerMaster+="<option value='"+playerName[slct]+"'>"+playerNum[slct]+" "+playerName[slct]+"</option>"
+		};
+		blockerMaster+="</select></td>";
+	}
+	var jamInfo = document.createElement("table");
+	jamInfo.setAttribute("id", "jam"+jamNumber);
+	jamInfo.setAttribute("cellspacing","0");
+	jamInfo.setAttribute("cellpadding","0");
+	var NUMvalidation="onkeyup='checkInput(this,true,false)'"
+	var info="<thead><tr>"
+	+"<td colspan='4'>Score at Start of Jam #"+jamNumber
+	+"<div style='float:right;'>Our Score:&nbsp;<input id='ourScore"+jamNumber+"' type='text' value='' size='4' "+NUMvalidation+">&nbsp;"
+	+"Their Score:&nbsp;<input id='theirScore"+jamNumber+"' type='text' value='' size='4' "+NUMvalidation+"></div></td>"
+	+"<tr>"
+	+blockerMaster
+	+"</tr></thead>"
+	+"<tbody><tr class='usRow'>"
+	+penaltyMaster
+
+	+"</tr><tr>"
+	+"<td class='usRow' colspan='2'>Our Jammer: "
+	+"<input id='ourJ"+jamNumber+"' type='button' value='Out of Pack' onclick=\"timeOut('ourJTime',"+jamNumber+");\" />:"
+	+"<input id='ourJTime"+jamNumber+"' "+NUMvalidation+" type='text' size='11' /></td>"
+	+"<td class='themRow' colspan='2'>Their Jammer: "
+	+"<input id='theirJ"+jamNumber+"' type='button' value='Out of Pack' onclick=\"timeOut('theirJTime',"+jamNumber+");\" />:"
+	+"<input id='theirJTime"+jamNumber+"' "+NUMvalidation+" type='text' size='11' /></td>"
+		+"</tr><tr>"
+	+"<td colspan='4'><input style='padding:5px 30px 5px 30px;' id='startJam"+jamNumber+"' type='button' value='Start Jam' onclick='timeMaster(this.id,"+jamNumber+");' />&nbsp;"
+	+"<input id='jamTime"+jamNumber+"' type='text' size='5' "+NUMvalidation+" value='0'/>&nbsp;"
+	+"<input style='padding:5px 30px 5px 30px;float:right;' id='endJam"+jamNumber+"' type='button' value='End Jam' disabled='true' onclick='stopTime("+jamNumber+");' /></td>"
+	+"</tr></tbody>"
+	var boutJams=document.getElementById("dataRow");
+	boutJams.appendChild(jamInfo);
+	document.getElementById("jam"+jamNumber).innerHTML=info;
+	jamNumber++;
+};
+function uniqueBlocker(inpt,bl,jn){
+	var disInpt=["blckr_b0_jn"+jn,"blckr_b1_jn"+jn,"blckr_b2_jn"+jn,"blckr_b3_jn"+jn]
+	var disOptn=[document.getElementById(disInpt[0]).value,document.getElementById(disInpt[1]).value,document.getElementById(disInpt[2]).value,document.getElementById(disInpt[3]).value];
+	var OptnNum=document.getElementById(inpt).getElementsByTagName("option");
+	for(othr=0;othr<OptnNum.length;othr++){
+		document.getElementById(disInpt[0]).getElementsByTagName("option")[othr].disabled=false;
+		document.getElementById(disInpt[1]).getElementsByTagName("option")[othr].disabled=false;
+		document.getElementById(disInpt[2]).getElementsByTagName("option")[othr].disabled=false;
+		document.getElementById(disInpt[3]).getElementsByTagName("option")[othr].disabled=false;
+		for(disO=0;disO<4;disO++){
+			if(document.getElementById(disInpt[0]).getElementsByTagName("option")[othr].value==disOptn[disO]){
+				document.getElementById(disInpt[0]).getElementsByTagName("option")[othr].disabled=true;
+			}
+			if(document.getElementById(disInpt[1]).getElementsByTagName("option")[othr].value==disOptn[disO]){
+				document.getElementById(disInpt[1]).getElementsByTagName("option")[othr].disabled=true;
+			}
+			if(document.getElementById(disInpt[2]).getElementsByTagName("option")[othr].value==disOptn[disO]){
+				document.getElementById(disInpt[2]).getElementsByTagName("option")[othr].disabled=true;
+			}
+			if(document.getElementById(disInpt[3]).getElementsByTagName("option")[othr].value==disOptn[disO]){
+				document.getElementById(disInpt[3]).getElementsByTagName("option")[othr].disabled=true;
+			}
+		}
+	};
+};
+function vwInfo(dv){
+	document.getElementById(dv).style.display="block";
+}
+function hdInfo(dv){
+	document.getElementById(dv).style.display="none";
+}
+</script>
+
+<body>
+<div id="navigation" style="height:30px;"></div>
+<div id="contentArea">
+	<div id="header">
+		<h1>Block Watch</h1>
+    	<h2>Track blockers and event times use in the StatKitty Blocker Stats application</h2>
+    	<p>This application does not support Internet Explorer or Safari. Please use Firefox or Chrome.</p>
+	</div>
+	<div id="setup">
+		Load Roster
+		<input type="file" id="fileInput">
+	</div>
+	<div id="roster"></div>
+	<div id="trackJam" style="display:none;">
+    	<input id="trkJamId" type="button" value="Track Bout" onclick="trackBout();" />
+	</div>
+	<div id="bout" style="display:none;">
+		<div class="boutHead">
+    		Bout:<input id="boutName" type="text" name="boutName" onkeyup='checkInput(this,true,true)' size="65"><br />
+    		Date:<input id="boutDate" type="text" name="boutDate" value="" size="65" disabled="true">
+            <a class="inst" onclick="vwInfo('instructions');">View Instructions</a>
+        	<div class="instInfo" id="instructions" style="display:none">
+        		<a class="closeInst" onclick="hdInfo('instructions');">X</a>
+                <p style="padding:10px 0px 2px 10px;"><b>Do not close your browser while tracking bout data. If you close your browser, your data will be lost.</b></p>
+                <p>Block Watch is easy to use, but it takes some getting used to when you are tracking a bout in real time. Stat Kitty recommends you practice a few times with the application before you track an important bout.</p>
+                <p><b>Step 1:</b> Name your bout.<br />
+    				<span>It is often preferable to track bouts by first and second half so data can be analyzed during half time.</span></p>
+                <p><b>Step 2:</b> Fill out the blue section below and wait for the jam to begin.<br />
+                	<span>The first jam within Jam Watch is numbered 0 for technical reasons</span></p>
+                <p><b>Step 3:</b> When the jam begins, press the "Start Jam" button. This will begin a timer.<br />
+    				<span>If you start the timer too soon, you can click it a second time to reset it.</span></p>
+                <p><b>Step 4:</b> Track the escape time of your team’s jammer, the opposing team’s jammer, and penalties received by blockers.<br />
+                	<span>If a blocker has a penalty that stretches over into the next jam, do not count the penalty a second time in the second jam.</span><br />
+                    <span>If you click the "Out of Pack" button multiple times, it will update the time out of pack. This should only be used when you make a mistake</span><br />
+    				<span>You can change the numbers within the fields manually if necessary. For example, if you miss the exact time a jammer made it out of the pack, received a penalty, or made a star pass, and a great deal of time has elapsed, simply enter your best guess into the field.</span></p>
+                <p><b>Step 5:</b> When the jam is called click the "End Jam" button. This will lock your buttons within tha jam.
+                	<span>Number fields will not lock incase you need to make changes manually.</span><br />
+    				<span>The blue area will also not lock incase you need to adjust that data.</span><br />
+    				<span>When the jam timer reaches 120 seconds the button will press itself automatically.</span></p>
+                <p><b>Step 6:</b> A new jam will automatically be created. Repeat steps 2 though 5 for the course of the bout.</p>
+                <p><b>Step 7:</b> When  you are ready to save your data enter the final score in the bottom of the page and press the "Half/Bout is Over" button<br />
+    				<span>This will lock all data for the entire half/bout, and you will not be able to make changes to any data.</span></p>
+                <p><b>Step 8:</b> Save your file for analysis.</p>
+        	</div>
+    	<div id="dataRow"></div>
+		<div style="width:660px;">
+    		<div style="float:left;width:172px;">Our Half/Final Score:<input id="ourScoreFinal" type='text' value='' onkeyup='checkInput(this,true,false)' size='6' /></div>
+    		<div style="float:left;width:172px;">Their Half/Final Score:<input id="theirScoreFinal" type='text' value='' onkeyup='checkInput(this,true,false)' size='6'  /></div>
+    		<a href="#" class="botButtons" id="HBover" onclick="boutOver();return false;">Half/Bout is Over</a><a style="display:none;" class="botButtons" id="saveBoutData">Save Bout Data</a>
+    	</div>
+	</div>
+</div>
+</body>
+</html>

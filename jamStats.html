@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="Analyze jams using Jam Stats 1.0. Compatible with Chrome and Firefox." />
+	<meta name="keywords" content="Roller Derby, Jam, Jammer, Skates, Stats, Blocker">
+	<meta name="author" content="Mark Rivett">
+	<title>Jam Stats</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+    <script type="text/javascript" src="fileLoader.js"></script>
+</head>
+<script type="text/javascript">
+//creates XML file
+var xmlFile = null
+function makeTextFile(text){
+    var data = new Blob([text], {type: 'text/xml'});
+    xmlFile = window.URL.createObjectURL(data);
+    return xmlFile;
+};
+//creates XML file END
+//alert Analyze functions
+var boutDataMaster=[];
+var ourJMaster=[];
+var ourSitStartMaster=[];
+var ourPackTimeMaster=[];
+var ourNPNP=[];
+var ourPenaltyMaster=[];
+var starPassMaster=[];
+var pivotMaster=[];
+var ourPointsMaster=[];
+var ourPointTotalMaster=[];
+var theirJMaster=[];
+var theirSitStartMaster=[];
+var theirPackTimeMaster=[];
+var theirNPNP=[];
+var theirPenaltyMaster=[];
+var theirPointsMaster=[];
+var theirPointTotalMaster=[];
+var jamTimeMaster=[];
+var notesMaster=[];
+var leadJammer=[];
+function loadData(dta){
+	var postParse=parseXml(dta);
+	if(postParse.childNodes[0].childNodes[13].childNodes[0].tagName=="Jammer"){
+		var b=postParse.getElementsByTagName("Data");
+	boutDataMaster[0]=b[0].getElementsByTagName("Bout")[0].childNodes[0].nodeValue;
+	boutDataMaster[1]=b[0].getElementsByTagName("Date")[0].childNodes[0].nodeValue;
+	boutDataMaster[2]=b[0].getElementsByTagName("OurScore")[0].childNodes[0].nodeValue;
+	boutDataMaster[3]=b[0].getElementsByTagName("OpposingScore")[0].childNodes[0].nodeValue;
+	boutDataMaster[4]=b[0].getElementsByTagName("Jam").length;
+	boutDataMaster[6]=parseInt(b[0].getElementsByTagName("OurStartingScore")[0].childNodes[0].nodeValue);
+	boutDataMaster[7]=parseInt(b[0].getElementsByTagName("OpposingStartingScore")[0].childNodes[0].nodeValue);
+	var jms=b[0].getElementsByTagName("Jam");
+	//load arrays with data
+	var ourPTotal=boutDataMaster[6];
+	var theirPTotal=boutDataMaster[7];
+	for(a=0;a<jms.length;a++){
+		//our data
+		ourJMaster[a]=jms[a].getElementsByTagName("Jammer")[0].childNodes[0].nodeValue;
+		ourSitStartMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("startedPenaltyBox");
+		if(jms[a].getElementsByTagName("Jammer")[0].getAttribute("timeOutOfPack")=="false"){
+			ourPackTimeMaster[a]=rndVal(parseFloat(jms[a].getElementsByTagName("JamTime")[0].childNodes[0].nodeValue),100);
+		} else {
+			ourPackTimeMaster[a]=rndVal(parseFloat(jms[a].getElementsByTagName("Jammer")[0].getAttribute("timeOutOfPack")),100);
+		}
+		ourNPNP[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("npnp");
+		ourPenaltyMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("drewPenalty");
+		starPassMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("starPass");
+		pivotMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("pivot");
+		ourPointsMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("scored");
+		ourPTotal+=parseInt(jms[a].getElementsByTagName("Jammer")[0].getAttribute("scored"));
+		ourPointTotalMaster[a]=ourPTotal;
+		//our data end
+		//their data
+		theirJMaster[a]=jms[a].getElementsByTagName("OpposingJammer")[0].childNodes[0].nodeValue;
+		theirSitStartMaster[a]=jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("startedPenaltyBox");
+		if(jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("timeOutOfPack")=="false"){
+			theirPackTimeMaster[a]=rndVal(parseFloat(jms[a].getElementsByTagName("JamTime")[0].childNodes[0].nodeValue),100);
+		} else {
+			theirPackTimeMaster[a]=rndVal(parseFloat(jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("timeOutOfPack")),100);
+		}
+		theirNPNP[a]=jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("npnp");
+		theirPenaltyMaster[a]=jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("drewPenalty");
+		theirPointsMaster[a]=jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("scored");
+		theirPTotal+=parseInt(jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("scored"));
+		theirPointTotalMaster[a]=theirPTotal;
+		//their data end
+		jamTimeMaster[a]=jms[a].getElementsByTagName("JamTime")[0].childNodes[0].nodeValue;
+		notesMaster[a]=jms[a].getElementsByTagName("Notes")[0].childNodes[0].nodeValue;
+	};
+	//load arrays with data END
+	//parse data
+	var ourLeadNum=0;
+	var theirLeadNum=0;
+	for(b=0;b<ourJMaster.length;b++){
+		//lead percentage Cal
+		if(ourPackTimeMaster[b]<theirPackTimeMaster[b]){
+			if(ourNPNP[b]=="false" && ourPenaltyMaster[b]=="false"){
+				ourLeadNum++
+				leadJammer[b]="us";
+			} else if(ourNPNP[b]=="false" && ourPenaltyMaster[b]!="false"){
+				ourLeadNum++
+				leadJammer[b]="usBut";
+			} else if(ourNPNP[b]=="true" && theirNPNP[b]=="false" && theirPenaltyMaster[b]=="false"){
+				theirLeadNum++
+				leadJammer[b]="them";
+			} else if(ourNPNP[b]=="true" && theirNPNP[b]=="false" && theirPenaltyMaster[b]!="false"){
+				theirLeadNum++
+				leadJammer[b]="themBut";
+			} else {
+				leadJammer[b]="none";
+			};
+		} else if(ourPackTimeMaster[b]>theirPackTimeMaster[b]){
+			if(theirNPNP[b]=="false" && theirPenaltyMaster[b]=="false"){
+				theirLeadNum++
+				leadJammer[b]="them";
+			} else if(theirNPNP[b]=="false" && theirPenaltyMaster[b]!="false"){
+				theirLeadNum++
+				leadJammer[b]="themBut";
+			} else if(theirNPNP[b]=="true" && ourNPNP[b]=="false" && ourPenaltyMaster[b]=="false"){
+				ourLeadNum++
+				leadJammer[b]="us";
+			} else if(theirNPNP[b]=="true" && ourNPNP[b]=="false" && ourPenaltyMaster[b]!="false"){
+				ourLeadNum++
+				leadJammer[b]="usBut";
+			} else {
+				leadJammer[b]="none";
+			};
+		} else {
+			leadJammer[b]="none";
+		}
+		//lead percentage Cal End
+	};
+	//parse data END
+	boutDataMaster[5]=Math.round((ourLeadNum/ourJMaster.length)*100)+"%";
+	analysisBuilder();
+	} else {
+		alert("The file you are loading is invalid. Please make sure you are loading a jammer XML file and try again.");
+	}
+}
+function loadBoutData(){
+	var XMLInfo=document.getElementById("analyzeBoutId").value;
+	xmlhttp=new XMLHttpRequest();
+	xmlhttp.open("GET",XMLInfo,false);
+	xmlhttp.setRequestHeader('Content-Type', 'text/xml');
+	xmlhttp.send();
+	xmlDoc=xmlhttp.responseXML;
+	if(xmlDoc.childNodes[0].childNodes[13].childNodes[1].tagName=="Jammer"){
+	var b=xmlDoc.getElementsByTagName("Data");
+	boutDataMaster[0]=b[0].getElementsByTagName("Bout")[0].childNodes[0].nodeValue;
+	boutDataMaster[1]=b[0].getElementsByTagName("Date")[0].childNodes[0].nodeValue;
+	boutDataMaster[2]=b[0].getElementsByTagName("OurScore")[0].childNodes[0].nodeValue;
+	boutDataMaster[3]=b[0].getElementsByTagName("OpposingScore")[0].childNodes[0].nodeValue;
+	boutDataMaster[4]=b[0].getElementsByTagName("Jam").length;
+	boutDataMaster[6]=parseInt(b[0].getElementsByTagName("OurStartingScore")[0].childNodes[0].nodeValue);
+	boutDataMaster[7]=parseInt(b[0].getElementsByTagName("OpposingStartingScore")[0].childNodes[0].nodeValue);
+	var jms=b[0].getElementsByTagName("Jam");
+	//load arrays with data
+	var ourPTotal=boutDataMaster[6];
+	var theirPTotal=boutDataMaster[7];
+	for(a=0;a<jms.length;a++){
+		//our data
+		ourJMaster[a]=jms[a].getElementsByTagName("Jammer")[0].childNodes[0].nodeValue;
+		ourSitStartMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("startedPenaltyBox");
+		if(jms[a].getElementsByTagName("Jammer")[0].getAttribute("timeOutOfPack")=="false"){
+			ourPackTimeMaster[a]=rndVal(parseFloat(jms[a].getElementsByTagName("JamTime")[0].childNodes[0].nodeValue),100);
+		} else {
+			ourPackTimeMaster[a]=rndVal(parseFloat(jms[a].getElementsByTagName("Jammer")[0].getAttribute("timeOutOfPack")),100);
+		}
+		ourNPNP[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("npnp");
+		ourPenaltyMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("drewPenalty");
+		starPassMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("starPass");
+		pivotMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("pivot");
+		ourPointsMaster[a]=jms[a].getElementsByTagName("Jammer")[0].getAttribute("scored");
+		ourPTotal+=parseInt(jms[a].getElementsByTagName("Jammer")[0].getAttribute("scored"));
+		ourPointTotalMaster[a]=ourPTotal;
+		//our data end
+		//their data
+		theirJMaster[a]=jms[a].getElementsByTagName("OpposingJammer")[0].childNodes[0].nodeValue;
+		theirSitStartMaster[a]=jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("startedPenaltyBox");
+		if(jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("timeOutOfPack")=="false"){
+			theirPackTimeMaster[a]=rndVal(parseFloat(jms[a].getElementsByTagName("JamTime")[0].childNodes[0].nodeValue),100);
+		} else {
+			theirPackTimeMaster[a]=rndVal(parseFloat(jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("timeOutOfPack")),100);
+		}
+		theirNPNP[a]=jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("npnp");
+		theirPenaltyMaster[a]=jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("drewPenalty");
+		theirPointsMaster[a]=jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("scored");
+		theirPTotal+=parseInt(jms[a].getElementsByTagName("OpposingJammer")[0].getAttribute("scored"));
+		theirPointTotalMaster[a]=theirPTotal;
+		//their data end
+		jamTimeMaster[a]=jms[a].getElementsByTagName("JamTime")[0].childNodes[0].nodeValue;
+		notesMaster[a]=jms[a].getElementsByTagName("Notes")[0].childNodes[0].nodeValue;
+	};
+	//load arrays with data END
+	//parse data
+	var ourLeadNum=0;
+	var theirLeadNum=0;
+	for(b=0;b<ourJMaster.length;b++){
+		//lead percentage Cal
+		if(ourPackTimeMaster[b]<theirPackTimeMaster[b]){
+			if(ourNPNP[b]=="false" && ourPenaltyMaster[b]=="false"){
+				ourLeadNum++
+				leadJammer[b]="us";
+			} else if(ourNPNP[b]=="false" && ourPenaltyMaster[b]!="false"){
+				ourLeadNum++
+				leadJammer[b]="usBut";
+			} else if(ourNPNP[b]=="true" && theirNPNP[b]=="false" && theirPenaltyMaster[b]=="false"){
+				theirLeadNum++
+				leadJammer[b]="them";
+			} else if(ourNPNP[b]=="true" && theirNPNP[b]=="false" && theirPenaltyMaster[b]!="false"){
+				theirLeadNum++
+				leadJammer[b]="themBut";
+			} else {
+				leadJammer[b]="none";
+			};
+		} else if(ourPackTimeMaster[b]>theirPackTimeMaster[b]){
+			if(theirNPNP[b]=="false" && theirPenaltyMaster[b]=="false"){
+				theirLeadNum++
+				leadJammer[b]="them";
+			} else if(theirNPNP[b]=="false" && theirPenaltyMaster[b]!="false"){
+				theirLeadNum++
+				leadJammer[b]="themBut";
+			} else if(theirNPNP[b]=="true" && ourNPNP[b]=="false" && ourPenaltyMaster[b]=="false"){
+				ourLeadNum++
+				leadJammer[b]="us";
+			} else if(theirNPNP[b]=="true" && ourNPNP[b]=="false" && ourPenaltyMaster[b]!="false"){
+				ourLeadNum++
+				leadJammer[b]="usBut";
+			} else {
+				leadJammer[b]="none";
+			};
+		} else {
+			leadJammer[b]="none";
+		}
+		//lead percentage Cal End
+	};
+	//parse data END
+	boutDataMaster[5]=Math.round((ourLeadNum/ourJMaster.length)*100)+"%";
+	analysisBuilder();
+	} else {
+		alert("The file you are loading is invalid. Please make sure you are loading a jammer XML file and try again.");
+	}
+};
+function analysisBuilder(){
+	document.getElementById("analysis").style.display="block";
+	document.getElementById("setup").style.display="none";
+	//header
+	var contentHeader="<div style='float:right;width:120px;'><span><b>Our Score: </b>"+boutDataMaster[2]+"</span><br /><span><b>Their Score: </b>"+boutDataMaster[3]+"</span></div>";
+	contentHeader+="<div style='float:right;width:190px;'><span><b>Number of Jams: </b>"+boutDataMaster[4]+"</span><br /><span><b>Lead Percentage: </b>"+boutDataMaster[5]+"</span></div>";
+	contentHeader+="<div style='float:left;width:420px;'><span><b>Bout: </b>"+boutDataMaster[0]+"</span><br /><span><b>Date: </b>"+boutDataMaster[1]+"</span></div>";
+	document.getElementById("anaHead").innerHTML=contentHeader;
+	//header end
+	//bout graph
+	var anaSpace=document.getElementById("masterLineChart");
+	var lWid=400/ourJMaster.length;
+	for(c=0;c<ourJMaster.length;c++){
+		//total
+		var nwMstrGrphA = document.createElement("div");
+		nwMstrGrphA.setAttribute("id","all"+c);
+		nwMstrGrphA.setAttribute("style","width:"+Math.floor((lWid*2)-2)+"px;height:"+Math.floor(jamTimeMaster[c]*2)+"px;display:block;position:absolute;opacity: 0.8;float:left;background:#E3E3E3;margin:0px 0px 0px "+Math.floor(lWid*c*2)+"px;");
+		nwMstrGrphA.setAttribute("onmouseover","jamDataShow("+c+",this.id);");
+		//total end
+		//us
+		var nwMstrGrphU = document.createElement("div");
+		nwMstrGrphU.setAttribute("id","us"+c);
+		nwMstrGrphU.setAttribute("style","width:"+Math.floor(lWid-1)+"px;height:"+Math.floor(ourPackTimeMaster[c]*2)+"px;display:block;float:left;background:#090;margin:0px 0px 0px 0px;");
+		nwMstrGrphA.appendChild(nwMstrGrphU);
+		//us end
+		//them
+		var nwMstrGrphT = document.createElement("div");
+		nwMstrGrphT.setAttribute("id","them"+c);
+		nwMstrGrphT.setAttribute("style","width:"+Math.floor(lWid-1)+"px;height:"+Math.floor(theirPackTimeMaster[c]*2)+"px;display:block;float:left;background:#900;margin:0px 0px 0px 0px;");
+		nwMstrGrphA.appendChild(nwMstrGrphT);
+		//them end
+		anaSpace.appendChild(nwMstrGrphA);
+	};
+	//bout graph end
+	//score graphs
+	var svgLine = document.getElementById("masterPoints");
+	var newLine = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	newLine.setAttributeNS(null,"id","lineGraph");
+	newLine.setAttributeNS(null,"width",800);
+	newLine.setAttributeNS(null,"height",240);
+	svgLine.appendChild(newLine);
+	//create line graph x and y data
+	var ScoreRange;
+	var ScoreBottom;
+	ScoreRange=(Math.max(boutDataMaster[2],boutDataMaster[3]))-Math.min((boutDataMaster[6],boutDataMaster[7]));
+	ScoreBottom=(Math.min(boutDataMaster[6],boutDataMaster[7]));
+	document.getElementById("fullPoints").innerHTML=Math.max(boutDataMaster[2],boutDataMaster[3])+" pnts";
+	document.getElementById("tqPoints").innerHTML=Math.min(boutDataMaster[6],boutDataMaster[7])+Math.round(ScoreRange*.75)+" pnts";
+    document.getElementById("halfPoints").innerHTML=Math.min(boutDataMaster[6],boutDataMaster[7])+Math.round(ScoreRange*.5)+" pnts";
+	document.getElementById("oqPoints").innerHTML=Math.min(boutDataMaster[6],boutDataMaster[7])+Math.round(ScoreRange*.25)+" pnts";
+    document.getElementById("noPoints").innerHTML=Math.min(boutDataMaster[6],boutDataMaster[7])+" pnts";
+	buildSVGgraph(ourJMaster.length,Math.floor((800/ourJMaster.length)),"#090",ScoreRange,boutDataMaster[6],ScoreBottom,ourPointTotalMaster);
+	buildSVGgraph(theirJMaster.length,Math.floor((800/theirJMaster.length)),"#900",ScoreRange,boutDataMaster[7],ScoreBottom,theirPointTotalMaster);
+	//create line graph x and y data end
+	//score graphs end
+	//builds individual jammer stats
+	jammerStatBuilder("us",ourJMaster,ourPenaltyMaster,ourPackTimeMaster,ourPointsMaster,theirPointsMaster,theirPackTimeMaster)
+	jammerStatBuilder("them",theirJMaster,theirPenaltyMaster,theirPackTimeMaster,theirPointsMaster,ourPointsMaster,ourPackTimeMaster)
+	//builds individual jammer stats end
+	//builds normal distributions
+	jamDistributionData();
+	//builds normal distributions end
+};
+function jammerStatBuilder(ut,jm,pen,time,pts,badGuyPts,bTime){
+	var JS=""
+	JS+="<table cellspacing='0' cellpadding='0' style='float:left;width:835px;padding:0px 0px 0px 0px;margin:0px 0px 15px 0px;'><thead style='background-color:#eee;'><tr><td width='155px;'>Jammer</td><td width='25px;'>Jams</td><td width='45px;'>Lead %</td><td width='70px;'>Penalties</td>";
+	if(ut=="us"){
+		JS+="<td width='100px;'>Star Passes</td>"
+	} else {
+		JS+="<td width='100px;'></td>"
+	}
+	JS+="<td width='120px;'>Time(s) out<br />of Pack</td><td width='50px;'><a class='help' title='Points per jam includes points scored by pivots after a star pass.'>Points per Jam</a></td><td width='100px;'>Opposing Points per Jam</td><td width='170px;'>Average Escape Time vs Opposing Escape Time</td></tr></thead><tbody>";
+	var usJammersStat=[];
+	var jamsStat=[];
+	var leadStat=[];
+	var penStat=[];
+	var passStat=[];
+	var timeOOPStat=[];
+	var TOOPClacStat=[]
+	var pointsPJStat=[];
+	var opposingPtsPJStat=[];
+	var opposingTOOPClacStat=[];
+	//player data builder
+	for(theNum=0;theNum<jm.length;theNum++){
+		usJammersStat[theNum]=jm[theNum];
+		if(usJammersStat.indexOf(jm[theNum])==usJammersStat.lastIndexOf(jm[theNum])){
+			jamsStat[theNum]=1;
+			if(leadJammer[theNum]==ut || leadJammer[theNum]==ut+"But"){
+				leadStat[theNum]=1;
+			} else {
+				leadStat[theNum]=0;
+			};
+			if(pen[theNum]!="false"){
+				penStat[theNum]="<span class='jStats'>Penalty in Jam #"+theNum+" at "+pen[theNum]+"</span>";
+			} else {
+				penStat[theNum]="";
+			};
+			if(ut=="us"){
+				if(starPassMaster[theNum]!="false"){
+					passStat[theNum]="<span class='jStats'>Jam #"+theNum+": Star Pass To "+pivotMaster[theNum]+"</span>";
+				} else {
+					passStat[theNum]="";
+				};
+			}
+			if(leadJammer[theNum]==ut || leadJammer[theNum]==ut+"But"){
+				timeOOPStat[theNum]="<span class='usM jStats'>Jam #"+theNum+": "+time[theNum]+" Sec</span>";
+			} else {
+				timeOOPStat[theNum]="<span class='themM jStats'>Jam #"+theNum+": "+time[theNum]+" Sec</span>";
+			}
+			TOOPClacStat[theNum]=parseFloat(time[theNum]);
+			pointsPJStat[theNum]=parseFloat(pts[theNum]);
+			opposingPtsPJStat[theNum]=parseFloat(badGuyPts[theNum]);
+			opposingTOOPClacStat[theNum]=parseFloat(bTime[theNum]);
+		} else {
+			usJammersStat.pop();
+			jamsStat[usJammersStat.indexOf(jm[theNum])]+=1
+			if(leadJammer[theNum]==ut || leadJammer[theNum]==ut+"But"){
+				leadStat[usJammersStat.indexOf(jm[theNum])]+=1;
+			};
+			if(pen[theNum]!="false"){
+				penStat[usJammersStat.indexOf(jm[theNum])]+="<span class='jStats'>Penalty in Jam #"+theNum+" at "+pen[theNum]+"</span>";
+			};
+			if(ut=="us"){
+				if(starPassMaster[theNum]!="false"){
+					passStat[usJammersStat.indexOf(jm[theNum])]+="<span class='jStats'>Jam #"+theNum+": Star Pass To "+pivotMaster[theNum]+"</span>";
+				};
+			};
+			if(leadJammer[theNum]==ut || leadJammer[theNum]==ut+"But"){
+				timeOOPStat[usJammersStat.indexOf(jm[theNum])]+="<span class='usM jStats'>Jam #"+theNum+": "+time[theNum]+" Sec</span>";
+			} else {
+				timeOOPStat[usJammersStat.indexOf(jm[theNum])]+="<span class='themM jStats'>Jam #"+theNum+": "+time[theNum]+" Sec</span>";
+			}
+			TOOPClacStat[usJammersStat.indexOf(jm[theNum])]+=parseFloat(time[theNum]);
+			pointsPJStat[usJammersStat.indexOf(jm[theNum])]+=parseFloat(pts[theNum]);
+			opposingPtsPJStat[usJammersStat.indexOf(jm[theNum])]+=parseFloat(badGuyPts[theNum]);
+			opposingTOOPClacStat[usJammersStat.indexOf(jm[theNum])]+=parseFloat(bTime[theNum]);
+		};
+	};
+	//player data builder
+	for(jStats=0;jStats<usJammersStat.length;jStats++){
+		if(usJammersStat[jStats]){
+			JS+="<tr><td>"+usJammersStat[jStats]+"</td>"
+			JS+="<td>"+jamsStat[jStats]+"</td>"
+			JS+="<td>"+leadPer(jamsStat[jStats],leadStat[jStats])+"%</td>"
+			JS+="<td>"+penStat[jStats]+"</td>"
+			if(ut=="us"){
+				JS+="<td>"+passStat[jStats]+"</td>"
+			} else {
+				JS+="<td></td>"
+			}
+			JS+="<td>"+timeOOPStat[jStats]+"</td>"
+			JS+="<td>"+pointsPer(jamsStat[jStats],pointsPJStat[jStats])+"</td>"
+			JS+="<td>"+pointsPer(jamsStat[jStats],opposingPtsPJStat[jStats])+"</td>"
+			JS+="<td>"+avrgTm(jamsStat[jStats],TOOPClacStat[jStats])+" Sec to "+avrgTm(jamsStat[jStats],opposingTOOPClacStat[jStats])+" Sec</td><tr>"
+		};
+		
+	};
+	JS+="</tbody></table>";
+	document.getElementById("jammerStats").innerHTML+=JS;
+}
+function avrgTm(jms,tm){
+	var masterNum=tm/jms;
+	return masterNum.toString().substring(0,4);
+}
+function pointsPer(jms,pts){
+	var masterNum=pts/jms;
+	return masterNum.toString().substring(0,4);
+}
+function leadPer(jms,lds){
+	var masterNum=lds/jms*100;
+	return masterNum.toString().substring(0,4);
+}
+function buildSVGgraph(n,w,usthem,range,strt,bot,who){
+	var svgGraphDef = document.getElementsByTagName("svg")[0];
+	var Line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+	Line.setAttribute("stroke", usthem);
+	Line.setAttribute("stroke-width", "3");
+	Line.setAttribute("fill", "none");
+	var heightFactor=240/range;
+	var StartY=240-((strt-bot)*heightFactor);
+	var StartX=0;
+	var SLine="M"+StartX+","+StartY;
+	var masterWidth=w;
+	for(makeLin=0;makeLin<n;makeLin++){
+		SLine+=" L"+masterWidth+","+(240-((who[makeLin]-bot)*heightFactor));
+		masterWidth+=w;
+	};
+	Line.setAttribute("d", SLine);
+    svgGraphDef.appendChild(Line);
+}
+function jamDataShow(jn,itm){
+	//rollover
+	document.getElementById("infoBox").style.display="block";
+	for(rlovr=0;rlovr<document.getElementById("masterLineChart").getElementsByTagName("div").length;rlovr+=3){
+		document.getElementById("masterLineChart").getElementsByTagName("div")[rlovr].style.border="none";
+		document.getElementById("masterLineChart").getElementsByTagName("div")[rlovr].style.opacity=0.8;
+	};
+	document.getElementById(itm).style.border="1px solid #000000";
+	document.getElementById(itm).style.opacity=1;
+	//rollover end
+	var infoData="";
+	infoData+="<h2>Jam #"+jn+": "+jamTimeMaster[jn]+"Sec</h2>";
+	infoData+="<h3>"+ourPointTotalMaster[jn]+" to "+theirPointTotalMaster[jn]+"</h3>";
+	if(leadJammer[jn]=="us"){
+		infoData+="<h4 class='usM'>&larr; Lead Jammer &larr;</h4>";
+	} else if (leadJammer[jn]=="usBut"){
+		infoData+="<h4 class='usM'>&larr; Lead Jammer was lost due to a penalty &larr;</h4>";
+	} else if(leadJammer[jn]=="them"){
+		infoData+="<h4 class='themM'>&rarr; Lead Jammer &rarr;</h4>";
+	} else if(leadJammer[jn]=="themBut"){
+		infoData+="<h4 class='themM'>&rarr; Lead Jammer was lost due to a penalty &rarr;</h4>";
+	} else {
+		infoData+="<h4>Lead Jammer was not achieved by either team.</h4>";
+	}
+	//Us
+	infoData+="<div class='teamInfo' style='float:left;'>"
+	if(ourSitStartMaster[jn]=="true"){
+		if(starPassMaster[jn]!="false"){
+			infoData+="<p class='usData'><b>"+ourJMaster[jn]+"</b> started in the penalty box,<br />and passed the star to <b>"+pivotMaster[jn]+"</b> at <b>"+starPassMaster[jn]+"</b><p>";
+		} else {
+			infoData+="<p class='usData'><b>"+ourJMaster[jn]+"</b> started in the penalty box.<p>";
+		}
+	} else {
+		if(starPassMaster[jn]!="false"){
+			infoData+="<p class='usData'><b>"+ourJMaster[jn]+"</b> passed the star to <b>"+pivotMaster[jn]+"</b> at <b>"+starPassMaster[jn]+"</b><p>";
+		} else {
+			infoData+="<p class='usData'><b>"+ourJMaster[jn]+"</b><p>";
+		}
+	};
+	
+	if(ourPenaltyMaster[jn]!="false"){
+		infoData+="<p class='usData'>A penalty was recieved at <b>"+ourPenaltyMaster[jn]+"</b> seconds.<p>";
+	}
+	if(ourPackTimeMaster[jn]==jamTimeMaster[jn]){
+		infoData+="<p class='usData'>Our Jammer did not make it out of the pack.<p>";
+	} else {
+		if(ourNPNP[jn]=="false"){
+			infoData+="<p class='usData'>Our Jammer escaped the pack in <b>"+ourPackTimeMaster[jn]+"</b> seconds.<p>";
+		} else {
+			infoData+="<p class='usData'>Our Jammer escaped the pack in <b>"+ourPackTimeMaster[jn]+"</b> seconds,<br />but received a No Pass No Penalty.<p>";
+		};
+	}
+	infoData+="<p class='usData'>Our Jammer scored "+ourPointsMaster[jn]+" points.</p>"
+	if(notesMaster[jn]!="None"){
+		document.getElementById("notesBox").innerHTML="Notes: "+notesMaster[jn];
+	} else {
+		document.getElementById("notesBox").innerHTML="Notes:";
+	}
+	infoData+="</div>"
+	//Us end
+	//Them
+	infoData+="<div class='teamInfo' style='float:right;'>"
+	if(theirSitStartMaster[jn]=="true"){
+		infoData+="<p class='themData'><b>"+theirJMaster[jn]+"</b> started in the penalty box.<p>";
+	} else {
+		infoData+="<p class='themData'><b>"+theirJMaster[jn]+"</b><p>";
+	};
+	if(theirPenaltyMaster[jn]!="false"){
+		infoData+="<p class='themData'>A penalty was recieved at <b>"+theirPenaltyMaster[jn]+" seconds.</b><p>";
+	}
+	if(theirPackTimeMaster[jn]==jamTimeMaster[jn]){
+		infoData+="<p class='themData'>Their Jammer did not make it out of the pack.<p>";
+	} else {
+		if(theirNPNP[jn]=="false"){
+			infoData+="<p class='themData'>Their Jammer escaped the pack in <b>"+theirPackTimeMaster[jn]+"</b> seconds.<p>";
+		} else {
+			infoData+="<p class='themData'>Their Jammer escaped the pack in <b>"+theirPackTimeMaster[jn]+"</b> seconds,<br />but received a No Pass No Penalty.<p>";
+		};
+	}
+	infoData+="<p class='themData'>Their Jammer scored "+theirPointsMaster[jn]+" points.</p>"
+	infoData+="</div>"
+	//Them end
+	document.getElementById("infoBox").innerHTML=infoData;
+};
+
+function jamDistributionData(){
+	//builds our jammer time graph
+	var svgGraphDef1=document.getElementById("ourJammerDist");
+	var newLine1=document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	newLine1.setAttributeNS(null,"id","ourTimeND");
+	newLine1.setAttributeNS(null,"width",835);
+	newLine1.setAttributeNS(null,"height",150);
+	newLine1.appendChild(buildDistributionChart(ourPackTimeMaster,835,120,"oJDMean","#090"));
+	var jWho=[];
+	for(ourJND=0;ourJND<ourJMaster.length;ourJND++){
+		if(jWho.indexOf(ourJMaster[ourJND])==-1){
+			jWho.push(ourJMaster[ourJND]);
+			buildJmrCntrl(ourJMaster[ourJND],jWho.indexOf(ourJMaster[ourJND]),"usNDInfo");
+		};
+		newLine1.appendChild(buildJDistribution(masterFactor,ourJMaster[ourJND],ourPackTimeMaster[ourJND],jWho.indexOf(ourJMaster[ourJND]),8));
+	};
+	svgGraphDef1.appendChild(newLine1);
+	
+	var svgGraphDef2=document.getElementById("theirJammerDist");
+	var newLine2=document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	newLine2.setAttributeNS(null,"id","theirTimeND");
+	newLine2.setAttributeNS(null,"width",835);
+	newLine2.setAttributeNS(null,"height",150);
+	newLine2.appendChild(buildDistributionChart(theirPackTimeMaster,835,120,"theirJDMean","#900"));
+	var jWho2=[];
+	for(theirJND=0;theirJND<theirJMaster.length;theirJND++){
+		if(jWho2.indexOf(theirJMaster[theirJND])==-1){
+			jWho2.push(theirJMaster[theirJND]);
+			buildJmrCntrl(theirJMaster[theirJND],jWho2.indexOf(theirJMaster[theirJND]),"themNDInfo");
+		};
+		newLine2.appendChild(buildJDistribution(masterFactor,theirJMaster[theirJND],theirPackTimeMaster[theirJND],jWho2.indexOf(theirJMaster[theirJND]),4));
+	};
+	svgGraphDef2.appendChild(newLine2);
+	
+	var svgGraphDef3=document.getElementById("allJammerDist");
+	var newLine3=document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	newLine3.setAttributeNS(null,"id","allTimeND");
+	newLine3.setAttributeNS(null,"width",835);
+	newLine3.setAttributeNS(null,"height",150);
+	var allPackTimeMaster=[];
+	allPackTimeMaster=theirPackTimeMaster.concat(ourPackTimeMaster);
+	newLine3.appendChild(buildDistributionChart(allPackTimeMaster,835,120,"allJDMean","#009"));
+	for(allJND=0;allJND<ourJMaster.length;allJND++){
+		newLine3.appendChild(buildJDistribution(masterFactor,ourJMaster[allJND],ourPackTimeMaster[allJND],jWho.indexOf(ourJMaster[allJND]),8));
+		newLine3.appendChild(buildJDistribution(masterFactor,theirJMaster[allJND],theirPackTimeMaster[allJND],jWho2.indexOf(theirJMaster[allJND]),4));
+	};
+	svgGraphDef3.appendChild(newLine3);
+	//builds our jammer time graph end
+}
+var masterFactor;
+function buildDistributionChart(tpe,wdth,rng,guideDiv,clr){
+	//mean
+	var meanTot=0;
+	for(meanCalc=0;meanCalc<tpe.length;meanCalc++){
+		meanTot+=tpe[meanCalc]
+	};
+	var mean=rndVal((meanTot/tpe.length),100);
+	//mean end
+	//variance
+	var varianceArray=[];
+	var variance=0;
+	for(varCalc=0;varCalc<tpe.length;varCalc++){
+		varianceArray[varCalc]=(tpe[varCalc]-mean)*(tpe[varCalc]-mean);
+		variance+=varianceArray[varCalc]
+	};
+	variance=variance/(tpe.length-1)
+	//variance end
+	//Standad Deviation
+	var SD=Math.sqrt(variance);
+	//Standad Deviation end
+	var normDist=document.createElementNS("http://www.w3.org/2000/svg", "path");
+	normDist.setAttribute("stroke", clr);
+	normDist.setAttribute("fill", "#eee");
+	normDist.setAttribute("stroke-width", "2");
+	normDist.setAttribute("class", "Dist");
+	var xCVal=[];
+	var yCVal=[];
+	var steps=rng;
+	for(bldD=0;bldD<steps+1;bldD++){
+		xCVal[bldD]=bldD
+		yCVal[bldD]=normDistFunction(xCVal[bldD],mean,SD);
+	};
+	var xFactor=wdth/steps
+	var yFactor=150/(Math.max.apply(Math, yCVal)-Math.min.apply(Math, yCVal))
+	var ilD="M0,150 ";
+	for(bld=0;bld<steps+1;bld++){
+		ilD+="L"+(xFactor*bld)+","+(150-(yFactor*(yCVal[bld]-Math.min.apply(Math, yCVal))))+" ";
+	}
+	ilD+="L"+wdth+",150 ";
+    normDist.setAttribute("d", ilD);
+	document.getElementById(guideDiv+"Down").style.width=SDdown(mean,xFactor,SD)+"px";
+	document.getElementById(guideDiv+"Down").innerHTML=Math.round(mean-SD);
+	document.getElementById(guideDiv).style.width=mean*xFactor+"px";
+	document.getElementById(guideDiv).innerHTML=Math.round(mean);
+	document.getElementById(guideDiv+"Up").style.width=SDup(mean,xFactor,SD,wdth)+"px";
+	document.getElementById(guideDiv+"Up").innerHTML=Math.round(mean+SD);
+	masterFactor=xFactor;
+	return normDist
+};
+function SDdown(mn,xF,sd){
+	var sdVald
+	sdVald=(mn*xF)-(sd*xF);
+	if (sdVald<0){
+		sdVald=0;
+	};
+	return sdVald
+}
+function SDup(mn,xF,sd,mx){
+	var sdValu
+	sdValu=(mn*xF)+(sd*xF);
+	if (sdValu>mx){
+		sdValu=mx;
+	};
+	return sdValu
+}
+var masterColors=["#770000","#777700","#007700","#007777","#770077","#ff0000","#ffff00","#00ff00","#00ffff","#0000ff","#ff00ff","#cccccc","#777777","#333333","#000000"]
+function buildJDistribution(mf,jmr,tm,jw,dar){
+	var jLineDist=document.createElementNS("http://www.w3.org/2000/svg", "path");
+	jLineDist.setAttribute("stroke", masterColors[jw]);
+	jLineDist.setAttribute("stroke-dasharray",dar+","+dar);
+	jLineDist.setAttribute("class", jmr.replace(" ", "").replace(" ", "").replace("#", ""));
+	jLineDist.setAttribute("fill", "none");
+	jLineDist.setAttribute("stroke-width", "2");
+	var loc=mf*tm
+	jLineDist.setAttribute("d", "M"+loc+",0 L"+loc+",150");
+	jLineDist.setAttribute("style", "display:none;")
+	return jLineDist
+}
+function buildJmrCntrl(who,clr,ut){
+	var NDcontrolls=document.getElementById(ut);
+	var nwJammer=document.createElement("input");
+	nwJammer.setAttribute("type","checkbox");
+	nwJammer.setAttribute("id",who.replace(" ", "").replace(" ", "").replace("#", ""));
+	nwJammer.setAttribute("onclick","showjammer();");
+	nwJammer.setAttribute("style","padding:2px 0px 2px 15px;");
+	var nwjammerLbl=document.createElement("label");
+	nwjammerLbl.setAttribute("for",who);
+	nwjammerLbl.setAttribute("style","padding:2px 5px 2px 0px;color:"+masterColors[clr]);
+	var nwJName=document.createTextNode(who);
+	nwjammerLbl.appendChild(nwJName);
+	NDcontrolls.appendChild(nwJammer);
+	NDcontrolls.appendChild(nwjammerLbl);
+}
+function normDistFunction(x,mn,sd) {
+	var a=x
+	var b=mn
+	var c=sd
+	var d=3.14;
+	var e=2.718;
+	var f=Math.sqrt((2*d));
+	var g=(c*f);
+	var h=Math.pow((a-b),2);
+	var i=2*(Math.pow(c,2));
+	var j=(-1)*(h/i);
+	var k=Math.pow(e,j);
+	var nor=k/g;
+	return Math.round(nor*10000)/10000;
+} 
+function rndVal(val,to){
+	var finalNum=(Math.round(val*to))/to
+	return finalNum
+}
+function showjammer(jmr){
+	var pathNum=document.getElementById("jamDistMaster").getElementsByTagName("path");
+	var inputNum=document.getElementById("jamDistMaster").getElementsByTagName("input");
+	for(pn=0;pn<pathNum.length;pn++){
+		if(pathNum[pn].classList.contains("Dist")){
+			pathNum[pn].style.display = "block";
+		} else {
+			pathNum[pn].style.display = "none";
+		};
+		for(jn=0;jn<inputNum.length;jn++){
+			if(inputNum[jn].checked==true){
+				if(pathNum[pn].classList.contains(inputNum[jn].id)){
+					pathNum[pn].style.display = "block";
+				};
+			};
+		};
+	};
+};
+function vwInfo(dv){
+	document.getElementById(dv).style.display="block";
+}
+function hdInfo(dv){
+	document.getElementById(dv).style.display="none";
+}
+
+//alert Analyze functions End
+</script>
+<body>
+	<div id="header">
+		<h1>Normalized Distribution Comparison</h1>
+    	<h2>Analize bout stats</h2>
+    	<p>This application does not support Internet Explorer or Safari. Please use Firefox or Chrome.</p>
+	</div>
+    <div id="setup">
+  		Analyze Bout
+    	<input type="file" id="fileInput">
+ 	</div>
+	<div id="analysis" style="display:none;">
+		<div id="anaHead" style="float:left;"></div>
+    	<div>
+    	<div style="float:left;width:835px;padding:10px 0px 10px 0px;">
+        	<div id="infoBox" style="display:none;"></div>
+    		<h1 style="float:left">Time out of Pack by Jam:</h1>
+    		<div class="key" style="background:#090;"></div><span style="float:right">Our time out of pack</span><br />
+    		<div class="key" style="background:#900;"></div><span style="float:right">Opponent time out of pack</span><br />
+    		<div class="key" style="background:#E3E3E3;"></div><span style="float:right">Total jam time</span>
+    	</div>
+    	<div id="masterChart">
+      		<div id="masterLineChart">
+      		</div>
+      		<div class="vert">0 Sec</div>
+      		<div class="vert">15 Sec</div>
+      		<div class="vert">30 Sec</div>
+      		<div class="vert">45 Sec</div>
+      		<div class="vert">60 Sec</div>
+      		<div class="vert">75 Sec</div>
+      		<div class="vert">90 Sec</div>
+      		<div class="vert">105 Sec</div>
+      		<div class="vert">120 Sec</div>
+    	</div>
+        <div style="border-bottom: 1px solid #bbb;width:835px;" id="notesBox">Notes: These are some notes</div>
+    <div>
+    <div>
+    	<div style="float:left;width:835px;padding:10px 0px 10px 0px;">
+    		<h1 style="float:left">Score:</h1>
+    		<div class="key" style="background:#090;"></div><span style="float:right">Our team's score</span><br />
+    		<div class="key" style="background:#900;"></div><span style="float:right">Opposing team's score</span><br />
+    	</div>
+        <div id="scoreChart">
+      		<div id="masterPoints"></div>
+      		<div class="vertP" id="fullPoints"></div>
+      		<div class="vertP" id="tqPoints"></div>
+            <div class="vertP" id="halfPoints"></div>
+      		<div class="vertP" id="oqPoints"></div>
+      		<div class="vertP" id="noPoints" style="padding:0px 0px 10px 0px;"></div>
+    	</div>
+    </div>
+    <div>
+    	<div style="float:left;width:835px;padding:10px 0px 10px 0px;">
+    		<h1 style="float:left">Jammer Stats:</h1>
+    		<div class="key" style="background:#090;"></div><span style="float:right">Lead Jam</span><br />
+    		<div class="key" style="background:#900;"></div><span style="float:right">Not Lead Jam</span><br />
+    	</div>
+    	<div id="jammerStats"></div>
+    </div>
+    <div>
+    	<div style="float:left;width:835px;padding:10px 0px 10px 0px;">
+    		<h1 style="float:left">Distribution of Jammer Escape Time:</h1><a class="inst" onclick="vwInfo('instructions');" style="float:left;margin:10px 0px 0px 10px">What is this?</a>
+    		<div class="key" style="background:#090;"></div><span style="float:right">Our Jammer's Time Out of Pack</span><br />
+            <div class="key" style="background:#009;"></div><span style="float:right">All Jammer's Time Out of Pack</span><br />
+    		<div class="key" style="background:#900;"></div><span style="float:right">Their Jammer's Time Out of Pack</span><br />
+        	<div class="instInfo" id="instructions" style="display:none">
+        		<a class="closeInst" onclick="hdInfo('instructions');">X</a>
+        		<p style="padding:10px 0px 2px 10px;">The curves below represent the time it takes for each teamâ€™s jammer to escape the pack ranging for 0 to 120 seconds. By clicking on the checkboxes you can see where each jammer's escape time for each jam falls. This can help create a picture of a jammer's overall performance.</p>
+				<p><b>About the curve:</b> A Normal Distribution is a statistical curve that is used in probability theory. The X axis of this curve represents time. The Y axis represents probability density - the chances that a jammers escape time will fall within a certain range. A thin curve means that your jammers are very consistent about getting out of the pack within a certain time range. A wide curve means that your jammers are escaping that pack at a broad range of times. A curve that leans left means your jammers are escaping the pack quickly. A curve that leans right means your jammers are taking a long time to escape the pack.</p>
+				<p><b>About the lines:</b> When you click on a checkbox below, you can see the times each jammer took to escape the pack. Lines to the left are faster escape times than lines to the right. Lines that are grouped together imply a trend. Individual lines that fall wildly outside the group are called outliers. Outliers are incidents that are factored into the equation, but should hold relatively little weight when assessing a jammer's overall performance... every jammer has the occasional good or bad jam.</p>
+                <p><b>Mean and Standard Deviation:</b> The numbers at the bottom of the chart represent the highest probability of jam times. The middle number is the mean, or average escape time of jammers. The other numbers represent one standard deviation from the mean, or the area where the vast majority of jams are likely to fall.</p>
+        	</div>
+    	</div>
+        <div style="float:left;width:835px;padding:10px 0px 10px 0px;" id="jamDistMaster">
+    	<div style="float:left;padding:0px 5px 0px 0px;margin:0px 0px 10px 0px;background-color:#bbffbb" id="ourJammerDist">
+        	<div class="NDGuide" id="oJDMeanDown"></div>
+        	<div class="NDGuide" id="oJDMean"></div>
+        	<div class="NDGuide" id="oJDMeanUp"></div>
+		</div>
+		<div style="float:left;padding:0px 5px 0px 0px;margin:0px 0px 10px 0px;background-color:#bbbbff" id="allJammerDist">
+        	<div class="NDGuide" id="allJDMeanDown"></div>
+        	<div class="NDGuide" id="allJDMean"></div>
+        	<div class="NDGuide" id="allJDMeanUp"></div>
+        </div>
+		<div style="float:left;padding:0px 0px 0px 0px;margin:0px 0px 10px 0px;background-color:#ffbbbb" id="theirJammerDist">
+        	<div class="NDGuide" id="theirJDMeanDown"></div>
+        	<div class="NDGuide" id="theirJDMean"></div>
+        	<div class="NDGuide" id="theirJDMeanUp"></div>
+        </div>
+        <div style="float:left;padding:20px 0px 0px 0px;" id="usNDInfo"><b>Our Jams:</b></div>
+        <div style="float:left;padding:10px 0px 20px 0px;" id="themNDInfo"><b>Opposing Jams:</b></div>
+        </div>
+        </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

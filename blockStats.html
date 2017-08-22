@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="Analyze blocker stats using Blocker Stats 1.0. Compatible with Chrome and Firefox." />
+	<meta name="keywords" content="Roller Derby, Jam, Jammer, Skates, Stats, Blocker">
+	<meta name="author" content="Mark Rivett">
+	<title>Blocker Stats</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+    <script type="text/javascript" src="navigation.js"></script>
+    <script type="text/javascript" src="fileLoader.js"></script>
+</head>
+<script>
+function loadData(dta){
+	var postParse=parseXml(dta);
+	if(postParse.childNodes[0].childNodes[13].childNodes[0].tagName=="Blocker"){
+	var b=postParse.getElementsByTagName("Data");
+	boutDataMaster[0]=b[0].getElementsByTagName("Bout")[0].childNodes[0].nodeValue;
+	boutDataMaster[1]=b[0].getElementsByTagName("Date")[0].childNodes[0].nodeValue;
+	boutDataMaster[2]=b[0].getElementsByTagName("OurScore")[0].childNodes[0].nodeValue;
+	boutDataMaster[3]=b[0].getElementsByTagName("OpposingScore")[0].childNodes[0].nodeValue;
+	boutDataMaster[4]=b[0].getElementsByTagName("Jam").length;
+	boutDataMaster[5]=parseInt(b[0].getElementsByTagName("OurStartingScore")[0].childNodes[0].nodeValue);
+	boutDataMaster[6]=parseInt(b[0].getElementsByTagName("OpposingStartingScore")[0].childNodes[0].nodeValue);
+	var jms=b[0].getElementsByTagName("Jam");
+	//load arrays with data
+	var ourPTotal=boutDataMaster[5];
+	var theirPTotal=boutDataMaster[6];
+	for(a=0;a<jms.length;a++){
+		for(ourBs=0;ourBs<jms[a].getElementsByTagName("Blocker").length;ourBs++){
+			if(blockerMaster.indexOf(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue)==-1){
+				blockerMaster.push(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue);
+				blockerJams.push(1);
+				goodPoints.push(parseInt(jms[a].getElementsByTagName("OurPoints")[0].childNodes[0].nodeValue));
+				badPoints.push(parseInt(jms[a].getElementsByTagName("TheirPoints")[0].childNodes[0].nodeValue));
+				dipTime.push(parseInt(jms[a].getElementsByTagName("OpponentEscape")[0].childNodes[0].nodeValue));
+				pedTime.push(parseInt(jms[a].getElementsByTagName("JammerEscape")[0].childNodes[0].nodeValue));
+				ppsTime.push(parseInt(jms[a].getElementsByTagName("JamTime")[0].childNodes[0].nodeValue));
+				penalties.push(parseInt(jms[a].getElementsByTagName("Blocker")[ourBs].getAttribute("penalties")));
+			} else {
+				blockerJams[blockerMaster.indexOf(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue)]++
+				goodPoints[blockerMaster.indexOf(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue)]+=Number(jms[a].getElementsByTagName("OurPoints")[0].childNodes[0].nodeValue);
+				badPoints[blockerMaster.indexOf(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue)]+=Number(jms[a].getElementsByTagName("TheirPoints")[0].childNodes[0].nodeValue);
+				dipTime[blockerMaster.indexOf(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue)]+=Number(jms[a].getElementsByTagName("OpponentEscape")[0].childNodes[0].nodeValue);
+				pedTime[blockerMaster.indexOf(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue)]+=Number(jms[a].getElementsByTagName("JammerEscape")[0].childNodes[0].nodeValue);
+				ppsTime[blockerMaster.indexOf(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue)]+=Number(jms[a].getElementsByTagName("JamTime")[0].childNodes[0].nodeValue);
+				penalties[blockerMaster.indexOf(jms[a].getElementsByTagName("Blocker")[ourBs].childNodes[0].nodeValue)]+=Number(jms[a].getElementsByTagName("Blocker")[ourBs].getAttribute("penalties"));
+			};
+		};		
+	};
+	vtarFactor=rndVal((boutDataMaster[2]-boutDataMaster[3])/boutDataMaster[4],100)
+	//load arrays with data END
+	analysisBuilder();
+	} else {
+		alert("The file you are loading is invalid. Please make sure you are loading a blocker XML file and try again.");
+	}
+}
+//creates XML file
+var xmlFile = null
+function makeTextFile(text){
+    var data = new Blob([text], {type: 'text/xml'});
+    xmlFile = window.URL.createObjectURL(data);
+    return xmlFile;
+};
+//creates XML file END
+//alert Analyze functions
+//vtar values
+var boutDataMaster=[];
+var blockerMaster=[];
+var blockerJams=[];
+var goodPoints=[];
+var badPoints=[];
+var vtarFactor=0;
+//vtar values end
+//new values
+var dipTime=[]
+var pedTime=[]
+var ppsTime=[]//also used in iWT and aWT
+var penalties=[]
+var dipTimeAvg=[]
+var pedTimeAvg=[]
+var iWT=[]
+var aWTNum=0
+var aWT=[]
+var dipMaster=[]
+var pedMaster=[]
+var ppsMaster=[]
+//new values end
+function rndVal(val,to){
+	var finalNum=(Math.round(val*to))/to
+	return finalNum
+}
+function analysisBuilder(){
+	//alert(penalties);
+	document.getElementById("analysis").style.display="block";
+	document.getElementById("setup").style.display="none";
+	//header
+	var contentHeader="<div style='float:right;width:120px;'><span><b>Our Score: </b>"+boutDataMaster[2]+"</span><br /><span><b>Their Score: </b>"+boutDataMaster[3]+"</span></div>";
+	contentHeader+="<div style='float:right;width:190px;'><span><b>Number of Jams: </b>"+boutDataMaster[4]+"</span></div>";
+	contentHeader+="<div style='float:left;width:420px;'><span><b>Bout: </b>"+boutDataMaster[0]+"</span><br /><span><b>Date: </b>"+boutDataMaster[1]+"</span></div>";
+	document.getElementById("anaHead").innerHTML=contentHeader;
+	//header end
+	//vtar
+	vtarBuilder();
+	//vtar end
+	//new Builder
+	newAniBuilder()
+	//new Builder End
+}
+function vtarBuilder(){
+	var contentVtar="<h1 style='float:left;width:100%;'>VTAR:</h1>";
+	contentVtar+="<table cellspacing='0' cellpadding='0'><thead><tr>";
+	contentVtar+="<td>Blocker</td><td>Jams<br /><sub>(X)</sub></td><td>Points For<br /><sub>(&sum;Y)</sub></td><td>Points Against<br /><sub>(&sum;Z)</sub></td><td>Total Point<br />Differential</td><td>Avergae Point<br />Differential</td><td>VTAR<br /><sub>((&sum;Y-&sum;Z)/X)-(("+boutDataMaster[2]+"-"+boutDataMaster[3]+")/"+boutDataMaster[4]+")</sub></td><td><b><span style='color:#A40000;'>Total</span>/<span style='color:#FF0000;'>Average</span><br />Points Against</b></td><td style='border:none;'><b><span style='color:#00A400;'>Total</span>/<span style='color:#00FF00;'>Average</span><br />Points For</b></td></tr></thead><tbody>";
+	for(vtarCalc=0;vtarCalc<blockerMaster.length;vtarCalc++){
+		contentVtar+="<tr>"
+		contentVtar+="<td>"+blockerMaster[vtarCalc]+"</td>"
+		contentVtar+="<td>"+blockerJams[vtarCalc]+"</td>"
+		contentVtar+="<td>"+goodPoints[vtarCalc]+"</td>"
+		contentVtar+="<td>"+badPoints[vtarCalc]+"</td>"
+		contentVtar+="<td>"+goodBadtext(goodPoints[vtarCalc],badPoints[vtarCalc],1,0)+"</td>"
+		contentVtar+="<td>"+goodBadtext(goodPoints[vtarCalc],badPoints[vtarCalc],blockerJams[vtarCalc],0)+"</td>"
+		contentVtar+="<td>"+goodBadtext(goodPoints[vtarCalc],badPoints[vtarCalc],blockerJams[vtarCalc],vtarFactor)+"</td>"
+		var bpa=badPoints[vtarCalc]/blockerJams[vtarCalc];
+		contentVtar+="<td style='border-right:none;width:200px;padding:0px 0px 0px 0px;'><div class='redBar' style='width:"+pointTranslator(badPoints[vtarCalc])+"px'><div class='redBarAvrg' style='width:"+pointTranslator(bpa)+"px'></div></div></td>"
+		var gpa=goodPoints[vtarCalc]/blockerJams[vtarCalc];
+		contentVtar+="<td style='border-right:none;width:200px;padding:0px 0px 0px 0px;'><div class='greenBar' style='width:"+pointTranslator(goodPoints[vtarCalc])+"px'><div class='greenBarAvrg' style='width:"+pointTranslator(gpa)+"px'></div></div></td>"
+		contentVtar+="</tr>"
+	}
+	contentVtar+="<tfoot><tr><td colspan='7'></td></tr></tfoot></tbody>"
+	document.getElementById("vtar").innerHTML=contentVtar;
+}
+var xFactr;
+function pointTranslator(pts){
+	var num=pts;
+	if(Math.max.apply(Math, badPoints)>Math.max.apply(Math, goodPoints)){
+		xFactr=200/(Math.max.apply(Math, badPoints));
+	} else {
+		xFactr=200/(Math.max.apply(Math, goodPoints));
+	};
+	return Math.round(num*xFactr);
+}
+function newAniBuilder(){
+	var contentDPP="<h1 style='float:left;width:100%;'>DIP, PED, and PPS:</h1>";
+	contentDPP+="<table cellspacing='0' cellpadding='0'><thead><tr>";
+	contentDPP+="<td>Blocker<br /><sub>(&sum;BL)</sub></td>"
+	contentDPP+="<td>Jams<br /><sub>(X)</sub></td>"
+	contentDPP+="<td>Penalties<br /><sub>(Pen)</sub></td>"
+	contentDPP+="<td style='width:70px;'>Opposing<br />Escape Time<br /><sub>(&sum;A)</sub></td>"
+	contentDPP+="<td style='width:70px;'>Opposing<br />Escape Time<br />Average</td>"
+	contentDPP+="<td>Points<br />Against<br /><sub>(Z)</sub></td>"
+	contentDPP+="<td style='width:70px;'>Allied<br />Escape Time<br /><sub>(&sum;C)</sub></td>"
+	contentDPP+="<td style='width:70px;'>Allied<br />Escape Time<br />Average</td>";
+	contentDPP+="<td>Play<br />Time<br /><sub>(&sum;T)</sub></td>"
+	contentDPP+="<td><a style='font-weight:normal;' title='1-(Pen*30)/&sum;T' class='help'>Initial<br />Weight<br /><sub>(iWT)</sub></a></td>"
+	contentDPP+="<td><a style='font-weight:normal;width:70px;' title='1-(&sum;iWT-iWT)/(&sum;BL-1)+iWT' class='help'>Adjusted<br />Weight<br /><sub>(aWT)</sub></a></td>"
+	contentDPP+="<td><a style='font-weight:normal;width:90px;' title='(&sum;A/X/B)*aWT' class='help'>Delayed<br />Initial Pass<br /><sub>(DIP)</sub></a></td>"
+	contentDPP+="<td><a style='font-weight:normal;width:70px;' title='((&sum;A/X/B)*aWT)-(&sum;C/X/B)/aWT' class='help'>Pack Escape<br />Differential<br /><sub>(PED)</sub></a></td>"
+	contentDPP+="<td><a style='font-weight:normal;' title='((&sum;P/X)/aWT)/(&sum;T/X*aWT)' class='help'>Points per<br />Second <br /><sub>(PPS)</sub></a></td>"
+	contentDPP+="<td style='border:none;'>Seconds<br />per Point</td></tr></thead><tbody>"
+	for(AB=0;AB<blockerMaster.length;AB++){
+		dipTimeAvg[AB]=rndVal((dipTime[AB]/blockerJams[AB]),100);
+		pedTimeAvg[AB]=rndVal((pedTime[AB]/blockerJams[AB]),100);
+		iWT[AB]=1-((penalties[AB]*30)/ppsTime[AB]);
+		aWTNum+=iWT[AB]
+	}
+	for(nwaCalc=0;nwaCalc<blockerMaster.length;nwaCalc++){
+		aWT[nwaCalc]=1-(aWTNum-iWT[nwaCalc])/(blockerMaster.length-1)+iWT[nwaCalc];
+		dipMaster[nwaCalc]=(dipTime[nwaCalc]/4/blockerJams[nwaCalc])*aWT[nwaCalc]
+		pedMaster[nwaCalc]=(dipMaster[nwaCalc]-((pedTime[nwaCalc]/4/blockerJams[nwaCalc])/aWT[nwaCalc]))
+		ppsMaster[nwaCalc]=(badPoints[nwaCalc]/aWT[nwaCalc])/(ppsTime[nwaCalc]*aWT[nwaCalc])
+		contentDPP+="<tr>"
+		contentDPP+="<td>"+blockerMaster[nwaCalc]+"</td>"
+		contentDPP+="<td>"+blockerJams[nwaCalc]+"</td>"
+		contentDPP+="<td>"+penalties[nwaCalc]+"</td>"
+		contentDPP+="<td>"+rndVal(dipTime[nwaCalc],100)+" Sec</td>"
+		contentDPP+="<td>"+dipTimeAvg[nwaCalc]+" Sec</td>"
+		contentDPP+="<td>"+badPoints[nwaCalc]+"</td>"
+		contentDPP+="<td>"+rndVal(pedTime[nwaCalc],100)+" Sec</td>"
+		contentDPP+="<td>"+pedTimeAvg[nwaCalc]+" Sec</td>"
+		contentDPP+="<td>"+rndVal(ppsTime[nwaCalc],100)+" Sec</td>"
+		contentDPP+="<td style='background-color:#ddeeff'>"+rndVal(iWT[nwaCalc],1000)+"</td>"
+		contentDPP+="<td style='background-color:#ddeeff'>"+rndVal(aWT[nwaCalc],1000)+"</td>"
+		contentDPP+="<td style='background-color:#ddffee'>"+rndVal(dipMaster[nwaCalc],1000)+"</td>"
+		contentDPP+="<td style='background-color:#ddffee'>"+rndVal(pedMaster[nwaCalc],1000)+"</td>"
+		contentDPP+="<td style='background-color:#ddffee'>"+rndVal(ppsMaster[nwaCalc],1000)+"</td>"
+		contentDPP+="<td style='border-right:none;background-color:#ddffee'>"+ppsTrans(ppsMaster[nwaCalc])+" Sec</td>"
+		contentDPP+="</tr>"
+	}
+	contentDPP+="<tfoot><tr><td colspan='6'></td></tr></tfoot></tbody>"
+	document.getElementById("newRate").innerHTML=contentDPP;
+}
+function goodBadtext(gn,bn,dv,vtv){
+	var num=((gn-bn)/dv)-vtv
+	var num=rndVal((((gn-bn)/dv)-vtv),100);
+	if(num<0){
+		num="<span style='color:#900;font-weight:bold;'>"+num+"</span>";
+	} else if (num>0){
+		num="<span style='color:#090;font-weight:bold;'>"+num+"</span>";
+	} else {
+		num="<span style='color:#009;font-weight:bold;'>"+num+"</span>";
+	};
+	return num
+}
+function ppsTrans(pps){
+	var num = pps
+	if(num==0){
+		num = "&infin;"
+	} else {
+		num = rndVal(1/pps,10)
+	}
+	return num
+}
+//alert Analyze functions End
+</script>
+<body>
+<div id="navigation" style="height:30px;"></div>
+<div id="contentArea">
+	<div id="header">
+		<h1>Blocker Stats</h1>
+    	<h2>Analize bout stats</h2>
+    	<p>This application does not support Internet Explorer or Safari. Please use Firefox or Chrome.</p>
+	</div>
+  <div id="setup">
+  	Analyze Bout
+    <input type="file" id="fileInput">
+  </div>
+  <div id="analysis" style="display:none;">
+    <div id="anaHead" style="float:left;"></div>
+  </div>
+  	<div id="vtar" style="float:left;margin:0px 0px 0px 10px;"></div>
+    <div id="newRate" style="float:left;margin:0px 0px 0px 10px;"></div>
+</div>
+</body>
+</html>

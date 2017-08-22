@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="Build Roller Derby rosters using Roster Builder 1.0. Compatible with Chrome and Firefox." />
+	<meta name="keywords" content="Roller Derby, Jam, Jammer, Skates, Stats, Blocker">
+	<meta name="author" content="Mark Rivett">
+	<title>Roster Builder 1.0</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<script type="text/javascript" src="navigation.js"></script>
+</head>
+<script>
+window.onbeforeunload = function (event) {
+  var message = 'Are you sure you want to leave? If you close the browser without saving, your data will be lost.';
+  if (typeof event == 'undefined') {
+    event = window.event;
+  }
+  if (event) {
+    event.returnValue = message;
+  }
+  return message;
+}
+function createRoster(){
+	document.getElementById("createRosterId").disabled=true;
+	document.getElementById("addPlyr").style.display="block";
+	addPlayer('','')
+};
+var playerNum=[];
+var playerName=[];
+var players=0;
+function addPlayer(num,nm){
+	//creates a new line for a player
+	var node = document.createElement("div");
+	node.setAttribute("id", "rost"+players);
+	node.setAttribute("class", "playerLine");
+	var textnode1 = document.createTextNode("Player Number: ");
+	var inputNode1 = document.createElement("input");
+	inputNode1.setAttribute("id", "playerNum"+players);
+	inputNode1.setAttribute("type", "text");
+	inputNode1.setAttribute("size", "6");
+	inputNode1.setAttribute("value", num);
+	inputNode1.setAttribute("onkeyup", "checkInput(this,true,false);");
+	var textnode2 = document.createTextNode("Player Name: ");
+	var inputNode2 = document.createElement("input");
+	inputNode2.setAttribute("id", "playerName"+players);
+	inputNode2.setAttribute("type", "text");
+	inputNode2.setAttribute("size", "55");
+	inputNode2.setAttribute("value", nm);
+	inputNode2.setAttribute("onkeyup", "checkInput(this,false,true);");
+	if(players!=0){
+		var actionNode = document.createElement("a");
+		actionNode.setAttribute("onclick", "deletePlayer("+players+");return false;");
+		actionNode.setAttribute("href", "#");
+		var textnode3 = document.createTextNode("Delete Player");
+		actionNode.appendChild(textnode3);
+	}
+	node.appendChild(textnode1);
+	node.appendChild(inputNode1);
+	node.appendChild(textnode2);
+	node.appendChild(inputNode2);
+	if(players!=0){
+		node.appendChild(actionNode);
+	}
+	document.getElementById("roster").appendChild(node);  
+	players++
+	//creates a new line for a player END
+	dlLink();
+};
+function deletePlayer(n){
+	var parent = document.getElementById("roster");
+  	var child = document.getElementById("rost"+n);
+  	parent.removeChild(child);
+};
+//creates Data layer for Roster XML file
+function dlLink(){
+	if(document.getElementById('rosterName').value!=""){
+		var lnk = document.getElementById('saveRoster');
+		lnk.download = document.getElementById('rosterName').value+".xml"
+		var rosterXMLInfo="<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><data>";
+		for(p=0;p<document.getElementById("roster").getElementsByTagName("input").length; p+=2){
+			rosterXMLInfo+="<player>";
+			rosterXMLInfo+="<number>"+document.getElementById("roster").getElementsByTagName("input")[p].value+"</number>";
+			rosterXMLInfo+="<name>"+document.getElementById("roster").getElementsByTagName("input")[parseInt(p)+1].value+"</name>";
+			rosterXMLInfo+="</player>";
+		};
+		rosterXMLInfo+="</data>";
+		//alert(rosterXMLInfo)
+   		lnk.href = makeTextFile(rosterXMLInfo);
+	} else {
+		alert("please name your roster");
+	};
+	
+};
+//creates Data layer for Roster XML file END
+//creates XML file
+var xmlFile = null
+function makeTextFile(text){
+    var data = new Blob([text], {type: 'text/xml'});
+    xmlFile = window.URL.createObjectURL(data);
+    return xmlFile;
+};
+//creates XML file END
+function checkInput(ob,nm,lt) {
+	if(nm && lt){
+		var invalidChars = /[^A-Za-z0-9_ ]/gi
+	} else if(nm && !lt){
+		var invalidChars = /[^0-9]/gi
+	} else if(lt && !nm){
+		var invalidChars = /[^a-zA-Z_ ]/gi
+	}
+	ob.value=ob.value.replace(" ","_");
+  	if(invalidChars.test(ob.value)) {
+		ob.value=ob.value.replace(invalidChars,"");
+	}
+}
+function vwInfo(dv){
+	document.getElementById(dv).style.display="block";
+}
+function hdInfo(dv){
+	document.getElementById(dv).style.display="none";
+}
+</script>
+
+<body onLoad="navBuilder()">
+<div id="navigation" style="height:30px;"></div>
+<div id="contentArea">
+	<div id="header">
+		<h1>Roster Builder</h1>
+    	<h2>Build Roller Derby rosters for use in StatKitty applications</h2>
+    	<p>This application does not support Internet Explorer or Safari. Please use Firefox or Chrome.</p>
+	</div>
+	<div id="setup">
+		<input id="createRosterId" type="button" value="Create Roster" onclick="createRoster();" />
+        <a class="inst" onclick="vwInfo('instructions');">View Instructions</a>
+        <div class="instInfo" id="instructions" style="display:none">
+        	<a class="closeInst" onclick="hdInfo('instructions');">X</a>
+        	<p style="padding:10px 0px 2px 10px;"><b>Step 1:</b> Click the Create Roster button.<br />
+      		<span>An input for a player’s number and name will appear.</span></p>
+            <p><b>Step 2:</b> Enter the names and numbers of your team's players.<br />
+            <span>You may add and delete players using the respective buttons.</span><br />
+            <span>Note that it is helpful to enter players who normally jam first, followed by players who normally block.</span><br />
+      		<span>Player numbers are restricted to numbers and names are restricted to letters for technical reasons.</span></p>
+    		<p><b>Step 3:</b> Name your roster.<br />
+      		<span>Roster names are restricted to numbers and letters for technical reasons.</span></p>
+    		<p><b>Step 4:</b> Click the Save Roster link.<br />
+      		<span>The browser will prompt you to download your roster to your download files directory on your computer.</span><br />
+            <span>It is helpful to move the file to an easier to find location.</span></p>
+        </div>
+  </div>
+  <div id="roster"></div>
+  <div id="addPlyr" style="display:none;">
+    <input id="addPlyrId" type="button" value="Add Player" onclick="addPlayer('','');return false;" />
+    <br/>
+    <br />
+    Roster name:
+    <input id="rosterName" value="My_Roster_2015" type="text" name="rosterName" onkeyup="checkInput(this,true,true)" size="65">
+    <br />
+    <a id="saveRoster" onclick="dlLink();">Save Roster</a> </div>
+</div>
+</body>
+</html>
